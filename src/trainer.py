@@ -40,8 +40,8 @@ class Trainer:
         losses = []
         w2_distances = []
 
-        Y, Z = self.function_distrib.Y, self.function_distrib.Z
         for epoch in range(self.config.get("epochs", 300)):
+            Y, Z = self.function_distrib.resample()
             self.optimizer.zero_grad()
             Y_pred = self.model(torch.from_numpy(Z).float())
             loss = self.criterion(Y_pred, torch.from_numpy(Y).float())

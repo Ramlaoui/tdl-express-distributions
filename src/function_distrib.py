@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn.datasets import make_swiss_roll
 
 
 class FunctionDistrib:
@@ -95,10 +96,29 @@ class FunctionDistrib:
             Z = np.random.uniform(-1, 1, self.n * self.d).reshape(self.n, self.d)
             self.Z = Z
         elif self.prior == "gaussian":
-            Z = np.random.normal(0, 1, self.n * self.d).reshape(self.n, self.d)
+            Z = np.random.s
             self.Z = Z
+        elif self.prior == "gaussian_mixture":
+            Z = np.concatenate(
+                [
+                    np.random.normal(-1, 0.5, self.n * self.d).reshape(self.n, self.d),
+                    np.random.normal(1, 0.5, self.n * self.d).reshape(self.n, self.d),
+                ]
+            )
+            self.Z = Z
+        elif self.prior == "swiss_roll":
+            Z, _ = make_swiss_roll(self.n, noise=0.1)
+            self.Z = Z
+        else:
+            raise ValueError(
+                "Prior must be uniform, gaussian, gaussian_mixture or swiss_roll"
+            )
 
         Y = self.apply_functions(Z)
         self.Y = Y
 
         return Z, Y
+
+    def resample(self):
+        self.generate_data()
+        return self.Z, self.Y
