@@ -1,14 +1,25 @@
 import numpy as np
 from sklearn.datasets import make_swiss_roll
+from sklearn.datasets import make_blobs
+import matplotlib.pyplot as plt
 
 
 class FunctionDistrib:
     def __init__(
-        self, n, d, l, function_type="linear", prior="uniform", init=True, seed=42
+        self,
+        n,
+        d,
+        l,
+        output_size=None,
+        function_type="linear",
+        prior="uniform",
+        init=True,
+        seed=42,
     ):
         self.n = n
         self.d = d
         self.l = l
+        self.output_size = output_size
         self.function_type = function_type
         self.prior = prior
         self.seed = seed
@@ -24,39 +35,51 @@ class FunctionDistrib:
             self.functions = []
             input_size = d
             for i in range(self.l):
+                if i == self.l - 1:
+                    output_size = self.output_size
+                else:
+                    output_size = None
                 function_layer, input_size = self.get_function(
-                    function_type, input_size
+                    function_type, input_size, output_size
                 )
                 self.functions.append(function_layer)
 
         self.generate_data()
 
-    def get_function(self, function_type, input_size):
+    def get_function(self, function_type, input_size, output_size):
         if function_type == "linear":
-            return self.get_linear_function(input_size)
+            return self.get_linear_function(input_size, output_size)
         elif function_type == "rbf":
-            return self.get_rbf_function(input_size)
+            return self.get_rbf_function(input_size, output_size)
         elif function_type == "trigonometric":
-            return self.get_trigonometric_function(input_size)
+            return self.get_trigonometric_function(input_size, output_size)
 
-    def get_linear_function(self, input_size):
+    def get_linear_function(self, input_size, output_size=None):
         np.random.seed(self.seed)
 
-        a = np.random.uniform(-1, 1, input_size)
-        b = np.random.uniform(-1, 1)
+        if output_size is None:
+            output_size = np.random.randint(1, 4)
+        A = np.random.uniform(-1, 1, (input_size, output_size))
+        b = np.random.uniform(-1, 1, output_size)
 
-        return lambda x: np.dot(a, x) + b, 1
+        return lambda x: np.dot(x, A) + b, output_size
 
-    def get_rbf_function(self, input_size):
+    def get_rbf_function(self, input_size, output_size):
         np.random.seed(self.seed)
+
+        if output_size is not None:
+            print("Warning: output_size is not used for rbf functions")
 
         gamma = np.random.uniform(-1, 1)
         c = np.random.uniform(-1, 1, input_size)
 
         return lambda x: np.exp(-gamma * np.linalg.norm(x - c) ** 2), input_size
 
-    def get_trigonometric_function(self, input_size):
+    def get_trigonometric_function(self, input_size, output_size):
         np.random.seed(self.seed)
+
+        if output_size is not None:
+            print("Warning: output_size is not used for trigonometric functions")
 
         a = np.random.uniform(-1, 1)
 
@@ -92,22 +115,21 @@ class FunctionDistrib:
     def generate_data(self):
         np.random.seed(self.seed)
 
-        if self.prior == "uniform":
+        if self.prior == "uniform_cube":
             Z = np.random.uniform(-1, 1, self.n * self.d).reshape(self.n, self.d)
             self.Z = Z
+        elif self.prior == "uniform_ball":
+            random_directions = np.random.normal(size=(self.n, self.d))
+            norms = np.linalg.norm(random_directions, axis=1, keepdims=True)
+            unit_vectors = random_directions / norms
+            random_radii = np.random.rand(self.n) ** (1.0 / self.d)
+            Z = unit_vectors * random_radii[:, np.newaxis]
+            self.Z = Z
         elif self.prior == "gaussian":
-            Z = np.random.s
+            Z = np.random.multivariate_normal(np.zeros(self.d), np.eye(self.d), self.n)
             self.Z = Z
         elif self.prior == "gaussian_mixture":
-            Z = np.concatenate(
-                [
-                    np.random.normal(-1, 0.5, self.n * self.d).reshape(self.n, self.d),
-                    np.random.normal(1, 0.5, self.n * self.d).reshape(self.n, self.d),
-                ]
-            )
-            self.Z = Z
-        elif self.prior == "swiss_roll":
-            Z, _ = make_swiss_roll(self.n, noise=0.1)
+            Z, _ = make_blobs(n_samples=self.n, n_features=self.d, centers=2)
             self.Z = Z
         else:
             raise ValueError(
@@ -118,6 +140,29 @@ class FunctionDistrib:
         self.Y = Y
 
         return Z, Y
+
+    def plot_2d(self, plot="input", ax=None):
+        if plot == "input":
+            to_plot = self.Z
+        elif plot == "output":
+            to_plot = self.Y
+        if to_plot.shape[1] != 2:
+            raise ValueError("Can only plot 2D data")
+        # Plot the histograms of the 2D data (3d plot)
+        if ax is None:
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection="3d")
+        hist, xedges, yedges = np.histogram2d(
+            to_plot[:, 0], to_plot[:, 1], bins=20, density=True
+        )
+        xpos, ypos = np.meshgrid(xedges[:-1] + 0.25, yedges[:-1] + 0.25, indexing="ij")
+        xpos = xpos.ravel()
+        ypos = ypos.ravel()
+        zpos = 0
+        dx = dy = 0.5 * np.ones_like(zpos)
+        dz = hist.ravel()
+        ax.bar3d(xpos, ypos, zpos, dx, dy, dz, zsort="average")
+        return ax
 
     def resample(self):
         self.generate_data()
