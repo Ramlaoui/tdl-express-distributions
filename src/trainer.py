@@ -73,3 +73,53 @@ class Trainer:
             print("Final Wasserstein distance: {}".format(w2))
 
         return losses, w2_distances
+
+    def plot_input_output(self, type="both", ax=None):
+        assert type in ["both", "original_distrib", "neural_network"], (
+            "type should be 'both', 'original_distrib' or 'neural_network', "
+            "but got {}".format(type)
+        )
+        n_cols = 2
+        if type == "both":
+            n_cols = 3
+        if ax is None:
+            fig, ax = plt.subplots(
+                1, n_cols, figsize=(5 * n_cols, 5), subplot_kw=dict(projection="3d")
+            )
+            if self.function_distrib.d == 1:
+                ax[0].remove()
+                ax[0] = fig.add_subplot(131)
+            if self.function_distrib.Y.shape[1] == 1:
+                ax[1].remove()
+                ax[1] = fig.add_subplot(132)
+                if type == "both":
+                    ax[2].remove()
+                    ax[2] = fig.add_subplot(133)
+
+        if type == "both":
+            self.function_distrib.plot(plot="input", ax=ax[0])
+            ax[0].set_title("Input distribution")
+            self.function_distrib.plot(plot="output", ax=ax[1])
+            ax[1].set_title("Original Output distribution")
+            self.function_distrib.plot(
+                plot="output",
+                to_plot=self.model(torch.FloatTensor(self.function_distrib.Z))
+                .detach()
+                .numpy(),
+                ax=ax[2],
+            )
+            ax[2].set_title("NN Output distribution")
+        elif type == "original_distrib":
+            self.function_distrib.plot_input_output(ax=ax, title=True)
+            fig.suptitle("Input and output of the original distribution")
+        elif type == "neural_network":
+            self.function_distrib.plot_input_output(
+                X_input=self.function_distrib.Z,
+                X_output=self.model(torch.FloatTensor(self.function_distrib.Z))
+                .detach()
+                .numpy(),
+                ax=ax,
+                title=False,
+            )
+            fig.suptitle("Input and output of the Neural Network")
+        return ax

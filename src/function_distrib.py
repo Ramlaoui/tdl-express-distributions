@@ -59,10 +59,10 @@ class FunctionDistrib:
 
         if output_size is None:
             output_size = np.random.randint(1, 4)
-        A = np.random.uniform(-1, 1, (input_size, output_size))
+        A = np.random.uniform(-1, 1, (output_size, input_size))
         b = np.random.uniform(-1, 1, output_size)
 
-        return lambda x: np.dot(x, A) + b, output_size
+        return lambda x: A.dot(x) + b, output_size
 
     def get_rbf_function(self, input_size, output_size):
         np.random.seed(self.seed)
@@ -141,11 +141,38 @@ class FunctionDistrib:
 
         return Z, Y
 
-    def plot_2d(self, plot="input", ax=None):
-        if plot == "input":
-            to_plot = self.Z
-        elif plot == "output":
-            to_plot = self.Y
+    def plot(self, to_plot=None, plot="input", ax=None, n_bins=20):
+        if to_plot is None:
+            if plot == "input":
+                to_plot = self.Z
+            elif plot == "output":
+                to_plot = self.Y
+        if to_plot.shape[1] == 1:
+            return self.plot_1d(to_plot, plot, ax, n_bins)
+        elif to_plot.shape[1] == 2:
+            return self.plot_2d(to_plot, plot, ax, n_bins)
+        else:
+            raise ValueError("Can only plot 1D or 2D data")
+
+    def plot_1d(self, to_plot=None, plot="input", ax=None, n_bins=20):
+        if to_plot is None:
+            if plot == "input":
+                to_plot = self.Z
+            elif plot == "output":
+                to_plot = self.Y
+        if to_plot.shape[1] != 1:
+            raise ValueError("Can only plot 1D data")
+        if ax is None:
+            fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+        ax.hist(to_plot, bins=n_bins, density=True)
+        return ax
+
+    def plot_2d(self, to_plot=None, plot="input", ax=None, n_bins=20):
+        if to_plot is None:
+            if plot == "input":
+                to_plot = self.Z
+            elif plot == "output":
+                to_plot = self.Y
         if to_plot.shape[1] != 2:
             raise ValueError("Can only plot 2D data")
         # Plot the histograms of the 2D data (3d plot)
@@ -153,7 +180,7 @@ class FunctionDistrib:
             fig = plt.figure()
             ax = fig.add_subplot(111, projection="3d")
         hist, xedges, yedges = np.histogram2d(
-            to_plot[:, 0], to_plot[:, 1], bins=20, density=True
+            to_plot[:, 0], to_plot[:, 1], bins=n_bins, density=True
         )
         xpos, ypos = np.meshgrid(xedges[:-1] + 0.25, yedges[:-1] + 0.25, indexing="ij")
         xpos = xpos.ravel()
@@ -162,6 +189,30 @@ class FunctionDistrib:
         dx = dy = 0.5 * np.ones_like(zpos)
         dz = hist.ravel()
         ax.bar3d(xpos, ypos, zpos, dx, dy, dz, zsort="average")
+        return ax
+
+    def plot_input_output(
+        self, X_input=None, X_output=None, ax=None, n_bins=20, title=True
+    ):
+        if X_input is None:
+            X_input = self.Z
+        if X_output is None:
+            X_output = self.Y
+        if ax is None:
+            fig, ax = plt.subplots(
+                1, 2, figsize=(10, 5), subplot_kw={"projection": "3d"}
+            )
+            if X_input.shape[1] == 1:
+                ax[0].remove()
+                ax[0] = fig.add_subplot(121)
+            if X_output.shape[1] == 1:
+                ax[1].remove()
+                ax[1] = fig.add_subplot(122)
+        ax[0] = self.plot(to_plot=X_input, plot="input", ax=ax[0], n_bins=n_bins)
+        ax[1] = self.plot(to_plot=X_output, plot="output", ax=ax[1], n_bins=n_bins)
+        if title:
+            ax[0].set_title("Input distribution")
+            ax[1].set_title("Output distribution")
         return ax
 
     def resample(self):
