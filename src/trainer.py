@@ -73,3 +73,41 @@ class Trainer:
             print("Final Wasserstein distance: {}".format(w2))
 
         return losses, w2_distances
+
+    def plot_input_output(self, type="both", ax=None):
+        n_rows = 1
+        if type == "both":
+            n_rows = 2
+        if ax is None:
+            fig, ax = plt.subplots(
+                n_rows, 2, figsize=(10, 5 * n_rows), subplot_kw=dict(projection="3d")
+            )
+        current_ax = ax if n_rows == 1 else ax[0, :]
+        if type in ["function_distrib", "both"]:
+            self.function_distrib.plot_input_output(ax=current_ax, title=False)
+            bbox = current_ax[0].get_position()
+            fig.text(
+                0.5,
+                bbox.y1 + 0.01,
+                "Input and Output of the function distrib",
+                ha="center",
+            )
+            current_ax = ax[1, :]
+
+        if type in ["neural_network", "both"]:
+            self.function_distrib.plot_input_output(
+                X_input=self.function_distrib.Z,
+                X_output=self.model(torch.FloatTensor(self.function_distrib.Z))
+                .detach()
+                .numpy(),
+                ax=current_ax,
+                title=False,
+            )
+            bbox = current_ax[0].get_position()
+            fig.text(
+                0.5,
+                bbox.y1 + 0.01,
+                "Input and Output of the Neural Network",
+                ha="center",
+            )
+        return ax
