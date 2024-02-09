@@ -12,22 +12,36 @@ class FunctionDistrib:
         l,
         output_size=None,
         function_type="linear",
+        output_function=None,
         prior="uniform",
         init=True,
         seed=42,
+        is_debug=False,
     ):
         self.n = n
         self.d = d
         self.l = l
         self.output_size = output_size
         self.function_type = function_type
+        self.output_function = output_function
         self.prior = prior
         self.seed = seed
+        self.is_debug = is_debug
 
-        if function_type == "random":
-            self.functions = self.generate_random_functions(self.l)
+        if self.function_type == "random":
+            self.function_type = ["linear", "rbf", "trigonometric"]
+        elif "-" in self.function_type:
+            self.function_type = self.function_type.split("-")
+
+        if self.output_function is not None and type(self.function_type) != list:
+            print("Output function can only be used with random function type")
+
+        if type(self.function_type) == list:
+            self.functions = self.generate_random_functions(
+                self.l, output_function=self.output_function
+            )
         else:
-            assert function_type in [
+            assert self.function_type in [
                 "linear",
                 "rbf",
                 "trigonometric",
@@ -40,7 +54,7 @@ class FunctionDistrib:
                 else:
                     output_size = None
                 function_layer, input_size = self.get_function(
-                    function_type, input_size, output_size
+                    self.function_type, input_size, output_size
                 )
                 self.functions.append(function_layer)
 
@@ -70,10 +84,10 @@ class FunctionDistrib:
         if output_size is not None:
             print("Warning: output_size is not used for rbf functions")
 
-        gamma = np.random.uniform(-1, 1)
+        gamma = np.random.uniform(0, 1)
         c = np.random.uniform(-1, 1, input_size)
 
-        return lambda x: np.exp(-gamma * np.linalg.norm(x - c) ** 2), input_size
+        return lambda x: np.exp(-gamma * np.linalg.norm(x - c) ** 2), 1
 
     def get_trigonometric_function(self, input_size, output_size):
         np.random.seed(self.seed)
@@ -85,23 +99,44 @@ class FunctionDistrib:
 
         return lambda x: np.cos(a * x) + np.sin(a * x), input_size
 
-    def generate_random_functions(self, l):
+    def generate_random_functions(self, l, output_function=None):
         np.random.seed(self.seed)
         functions = []
         input_size = self.d
 
         for i in range(l):
-            function_type = np.random.choice(["linear", "rbf", "trigonometric"])
+            if i == l - 1:
+                output_size = self.output_size
+            else:
+                output_size = None
+
+            if output_function is not None and i == l - 1:
+                function_type = output_function
+            else:
+                function_type = np.random.choice(["linear", "rbf", "trigonometric"])
+
+            if self.is_debug:
+                print(f"function_type: {function_type}")
+                print(f"input_size: {input_size}")
 
             if function_type == "linear":
-                function_layer, input_size = self.get_linear_function(input_size)
+                function_layer, input_size = self.get_linear_function(
+                    input_size, output_size=output_size
+                )
                 functions.append(function_layer)
             elif function_type == "rbf":
-                function_layer, input_size = self.get_rbf_function(input_size)
+                function_layer, input_size = self.get_rbf_function(
+                    input_size, output_size=output_size
+                )
                 functions.append(function_layer)
             elif function_type == "trigonometric":
-                function_layer, input_size = self.get_trigonometric_function(input_size)
+                function_layer, input_size = self.get_trigonometric_function(
+                    input_size, output_size=output_size
+                )
                 functions.append(function_layer)
+
+            if self.is_debug:
+                print(f"output_size: {output_size}")
 
         return functions
 
