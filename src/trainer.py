@@ -75,39 +75,42 @@ class Trainer:
         return losses, w2_distances
 
     def plot_input_output(self, type="both", ax=None):
-        n_rows = 1
+        assert type in ["both", "original_distrib", "neural_network"], (
+            "type should be 'both', 'original_distrib' or 'neural_network', "
+            "but got {}".format(type)
+        )
+        n_cols = 2
         if type == "both":
-            n_rows = 2
+            n_cols = 3
         if ax is None:
             fig, ax = plt.subplots(
-                n_rows, 2, figsize=(10, 5 * n_rows), subplot_kw=dict(projection="3d")
+                1, n_cols, figsize=(5 * n_cols, 7), subplot_kw=dict(projection="3d")
             )
-        current_ax = ax if n_rows == 1 else ax[0, :]
-        if type in ["function_distrib", "both"]:
-            self.function_distrib.plot_input_output(ax=current_ax, title=False)
-            bbox = current_ax[0].get_position()
-            fig.text(
-                0.5,
-                bbox.y1 + 0.01,
-                "Input and Output of the function distrib",
-                ha="center",
-            )
-            current_ax = ax[1, :]
 
-        if type in ["neural_network", "both"]:
+        if type == "both":
+            self.function_distrib.plot_2d(plot="input", ax=ax[0])
+            ax[0].set_title("Input distribution")
+            self.function_distrib.plot_2d(plot="output", ax=ax[1])
+            ax[1].set_title("Original Output distribution")
+            self.function_distrib.plot_2d(
+                plot="output",
+                to_plot=self.model(torch.FloatTensor(self.function_distrib.Z))
+                .detach()
+                .numpy(),
+                ax=ax[2],
+            )
+            ax[2].set_title("NN Output distribution")
+        elif type == "original_distrib":
+            self.function_distrib.plot_input_output(ax=ax, title=True)
+            fig.suptitle("Input and output of the original distribution")
+        elif type == "neural_network":
             self.function_distrib.plot_input_output(
                 X_input=self.function_distrib.Z,
                 X_output=self.model(torch.FloatTensor(self.function_distrib.Z))
                 .detach()
                 .numpy(),
-                ax=current_ax,
+                ax=ax,
                 title=False,
             )
-            bbox = current_ax[0].get_position()
-            fig.text(
-                0.5,
-                bbox.y1 + 0.01,
-                "Input and Output of the Neural Network",
-                ha="center",
-            )
+            fig.suptitle("Input and output of the Neural Network")
         return ax
