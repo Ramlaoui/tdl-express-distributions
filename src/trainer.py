@@ -84,15 +84,24 @@ class Trainer:
             n_cols = 3
         if ax is None:
             fig, ax = plt.subplots(
-                1, n_cols, figsize=(5 * n_cols, 7), subplot_kw=dict(projection="3d")
+                1, n_cols, figsize=(5 * n_cols, 5), subplot_kw=dict(projection="3d")
             )
+            if self.function_distrib.d == 1:
+                ax[0].remove()
+                ax[0] = fig.add_subplot(131)
+            if self.function_distrib.Y.shape[1] == 1:
+                ax[1].remove()
+                ax[1] = fig.add_subplot(132)
+                if type == "both":
+                    ax[2].remove()
+                    ax[2] = fig.add_subplot(133)
 
         if type == "both":
-            self.function_distrib.plot_2d(plot="input", ax=ax[0])
+            self.function_distrib.plot(plot="input", ax=ax[0])
             ax[0].set_title("Input distribution")
-            self.function_distrib.plot_2d(plot="output", ax=ax[1])
+            self.function_distrib.plot(plot="output", ax=ax[1])
             ax[1].set_title("Original Output distribution")
-            self.function_distrib.plot_2d(
+            self.function_distrib.plot(
                 plot="output",
                 to_plot=self.model(torch.FloatTensor(self.function_distrib.Z))
                 .detach()
