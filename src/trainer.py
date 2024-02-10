@@ -8,8 +8,11 @@ from src.utils import compute_wasserstein_distance
 
 
 class Trainer:
-    def __init__(self, config, function_distrib=None):
+    def __init__(self, config, function_distrib=None, is_debug=False):
         self.config = config
+
+        if is_debug:
+            self.config["function_distrib"]["is_debug"] = True
 
         torch.manual_seed(self.config.get("seed", 42))
 
