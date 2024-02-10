@@ -158,6 +158,7 @@ class FunctionDistrib:
         np.random.seed(self.seed)
         functions = []
         function_details = []
+        previous_function = None
         input_size = self.d
 
         for i in range(l):
@@ -169,7 +170,16 @@ class FunctionDistrib:
             if output_function is not None and i == l - 1:
                 function_type = output_function
             else:
-                function_type = np.random.choice(self.function_type)
+                if previous_function is None:
+                    sample_from = self.function_type
+                else:
+                    sample_from = [
+                        function
+                        for function in self.function_type
+                        if function != previous_function
+                    ]
+                function_type = np.random.choice(sample_from)
+                previous_function = function_type
 
             if self.is_debug:
                 print(f"function_type: {function_type}")
@@ -189,12 +199,13 @@ class FunctionDistrib:
     def apply_functions(self, Z):
         temp = Z
         for i in range(self.l):
-            # if self.is_debug:
-            #     print(f"Comp. layer {i} - temp.shape: {temp.shape}")
-            #     plt.hist(temp[:, 0])
-            #     plt.show()
-            #     plt.hist(temp[:, 1])
-            #     plt.show()
+            if self.is_debug:
+                print(f"Comp. layer {i} - temp.shape: {temp.shape}")
+                # plt.hist(temp[:, 0])
+                # plt.show()
+                # plt.hist(temp[:, 1])
+                # plt.show()
+                self.plot_2d(temp)
             temp = np.apply_along_axis(self.functions[i], 1, temp).reshape(self.n, -1)
 
         return temp
