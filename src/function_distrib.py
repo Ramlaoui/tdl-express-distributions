@@ -113,7 +113,7 @@ class FunctionDistrib:
             if output_function is not None and i == l - 1:
                 function_type = output_function
             else:
-                function_type = np.random.choice(["linear", "rbf", "trigonometric"])
+                function_type = np.random.choice(self.function_type)
 
             if self.is_debug:
                 print(f"function_type: {function_type}")
