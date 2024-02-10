@@ -32,7 +32,7 @@ class FunctionDistrib:
         if self.function_type == "random":
             self.function_type = [
                 "linear",
-                # "quadratic",
+                "quadratic",
                 "rbf",
                 "trigonometric",
                 "sigmoid",
@@ -125,7 +125,7 @@ class FunctionDistrib:
             print("Warning: output_size is not used for rbf functions")
 
         gamma = np.random.uniform(0, 5)
-        c = np.random.uniform(-10, 10, input_size)
+        c = np.random.uniform(-1, 1, input_size)
 
         return (
             lambda x: np.exp(-gamma * np.linalg.norm(x - c) ** 2),
@@ -159,6 +159,7 @@ class FunctionDistrib:
         functions = []
         function_details = []
         previous_function = None
+        function_type_rotation = self.function_type
         input_size = self.d
 
         for i in range(l):
@@ -175,10 +176,14 @@ class FunctionDistrib:
                 else:
                     sample_from = [
                         function
-                        for function in self.function_type
+                        for function in function_type_rotation
                         if function != previous_function
                     ]
                 function_type = np.random.choice(sample_from)
+                if function_type == "rbf":
+                    function_type_rotation = [
+                        f for f in self.function_type if f != "rbf"
+                    ]
                 previous_function = function_type
 
             if self.is_debug:
@@ -196,21 +201,22 @@ class FunctionDistrib:
 
         return functions, function_details
 
-    def apply_functions(self, Z):
+    def apply_functions(self, Z, visualize=False):
         temp = Z
         for i in range(self.l):
-            if self.is_debug:
+            if visualize:
                 print(f"Comp. layer {i} - temp.shape: {temp.shape}")
-                # plt.hist(temp[:, 0])
-                # plt.show()
-                # plt.hist(temp[:, 1])
-                # plt.show()
-                self.plot_2d(temp)
+                self.plot(temp)
+                plt.show()
             temp = np.apply_along_axis(self.functions[i], 1, temp).reshape(self.n, -1)
+        if visualize:
+            print(f"Comp. layer {i} - temp.shape: {temp.shape}")
+            self.plot(temp)
+            plt.show()
 
         return temp
 
-    def generate_data(self):
+    def generate_data(self, visualize=False):
         np.random.seed(self.seed + self.i)
         self.i += 1
 
@@ -235,14 +241,16 @@ class FunctionDistrib:
                 "Prior must be uniform, gaussian, gaussian_mixture or swiss_roll"
             )
 
-        Y = self.apply_functions(self.Z)
+        Y = self.apply_functions(self.Z, visualize=visualize)
         self.Y = Y
 
         return Z, Y
 
     def get_function_types(self):
         for i, function_detail in enumerate(self.function_details):
-            print(f"Layer {i}: {function_detail['type']}")
+            print(f"Layer {i}:")
+            for k, v in function_detail.items():
+                print(f"  {k}: {v}")
 
     def plot(self, to_plot=None, plot="input", ax=None, n_bins=20):
         if to_plot is None:
