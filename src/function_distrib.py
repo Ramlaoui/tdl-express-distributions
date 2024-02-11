@@ -12,134 +12,253 @@ class FunctionDistrib:
         l,
         output_size=None,
         function_type="linear",
+        output_function=None,
         prior="uniform",
         init=True,
         seed=42,
+        is_debug=False,
     ):
         self.n = n
         self.d = d
         self.l = l
         self.output_size = output_size
         self.function_type = function_type
+        self.output_function = output_function
         self.prior = prior
         self.seed = seed
+        self.i = 0
+        self.is_debug = is_debug
 
-        if function_type == "random":
-            self.functions = self.generate_random_functions(self.l)
-        else:
-            assert function_type in [
+        if self.function_type == "random":
+            self.function_type = [
                 "linear",
+                "quadratic",
                 "rbf",
                 "trigonometric",
-            ], "Function type must be linear, rbf, trigonometric or random"
+                # "sigmoid",
+            ]
+        elif "-" in self.function_type:
+            self.function_type = self.function_type.split("-")
+
+        if self.output_function is not None and type(self.function_type) != list:
+            print("Output function can only be used with random function type")
+
+        if type(self.function_type) == list:
+            self.functions, self.function_details = self.generate_random_functions(
+                self.l, output_function=self.output_function
+            )
+        else:
+            assert self.function_type in [
+                "linear",
+                "quadratic",
+                "sigmoid",
+                "rbf",
+                "trigonometric",
+            ], "Function type must be linear, quadratic, sigmoid, rbf, trigonometric or random"
             self.functions = []
+            self.function_details = []
             input_size = d
             for i in range(self.l):
                 if i == self.l - 1:
                     output_size = self.output_size
                 else:
                     output_size = None
-                function_layer, input_size = self.get_function(
-                    function_type, input_size, output_size
+                function_layer, input_size, function_detail = self.get_function(
+                    self.function_type, input_size, output_size
                 )
                 self.functions.append(function_layer)
+                self.function_details.append(function_detail)
+                self.i += 1
 
         self.generate_data()
 
     def get_function(self, function_type, input_size, output_size):
         if function_type == "linear":
             return self.get_linear_function(input_size, output_size)
+        elif function_type == "quadratic":
+            return self.get_quadratic_function(input_size, output_size)
+        elif function_type == "sigmoid":
+            return self.get_sigmoid_function(input_size, output_size)
         elif function_type == "rbf":
             return self.get_rbf_function(input_size, output_size)
         elif function_type == "trigonometric":
             return self.get_trigonometric_function(input_size, output_size)
 
     def get_linear_function(self, input_size, output_size=None):
-        np.random.seed(self.seed)
+        np.random.seed(self.seed + self.i)
 
         if output_size is None:
             output_size = np.random.randint(1, 4)
-        A = np.random.uniform(-1, 1, (output_size, input_size))
-        b = np.random.uniform(-1, 1, output_size)
+        A = np.random.uniform(-10, 10, (output_size, input_size))
+        b = np.random.uniform(-10, 10, output_size)
 
-        return lambda x: A.dot(x) + b, output_size
+        return lambda x: A.dot(x) + b, output_size, {"type": "linear", "A": A, "b": b}
+
+    def get_quadratic_function(self, input_size, output_size=None):
+        np.random.seed(self.seed + self.i)
+
+        if output_size is not None:
+            print("Warning: output_size is not used for quadratic functions")
+
+        A = np.random.uniform(-10, 10, (input_size, input_size))
+        b = np.random.uniform(-10, 10, (1, input_size))
+        c = np.random.uniform(-10, 10)
+
+        return (
+            lambda x: x.T.dot(A).dot(x) + b.dot(x) + c,
+            1,
+            {"type": "quadratic", "A": A, "b": b, "c": c},
+        )
+
+    def get_sigmoid_function(self, input_size, output_size=None):
+        np.random.seed(self.seed + self.i)
+
+        if output_size is not None:
+            print("Warning: output_size is not used for sigmoid functions")
+
+        return lambda x: 1 / (1 + np.exp(-x)), input_size, {"type": "sigmoid"}
 
     def get_rbf_function(self, input_size, output_size):
-        np.random.seed(self.seed)
+        np.random.seed(self.seed + self.i)
 
         if output_size is not None:
             print("Warning: output_size is not used for rbf functions")
 
-        gamma = np.random.uniform(-1, 1)
+        gamma = np.random.uniform(0, 5)
         c = np.random.uniform(-1, 1, input_size)
 
-        return lambda x: np.exp(-gamma * np.linalg.norm(x - c) ** 2), input_size
+        return (
+            lambda x: np.exp(-gamma * np.linalg.norm(x - c) ** 2),
+            1,
+            {
+                "type": "rbf",
+                "gamma": gamma,
+                "c": c,
+            },
+        )
 
     def get_trigonometric_function(self, input_size, output_size):
-        np.random.seed(self.seed)
+        np.random.seed(self.seed + self.i)
 
         if output_size is not None:
             print("Warning: output_size is not used for trigonometric functions")
 
         a = np.random.uniform(-1, 1)
 
-        return lambda x: np.cos(a * x) + np.sin(a * x), input_size
+        return (
+            lambda x: np.cos(a * x) + np.sin(a * x),
+            input_size,
+            {
+                "type": "trigonometric",
+                "a": a,
+            },
+        )
 
-    def generate_random_functions(self, l):
+    def generate_random_functions(self, l, output_function=None):
         np.random.seed(self.seed)
         functions = []
+        function_details = []
+        previous_function = None
+        function_type_rotation = self.function_type
         input_size = self.d
 
         for i in range(l):
-            function_type = np.random.choice(["linear", "rbf", "trigonometric"])
+            if i == l - 1:
+                output_size = self.output_size
+            else:
+                output_size = None
 
-            if function_type == "linear":
-                function_layer, input_size = self.get_linear_function(input_size)
-                functions.append(function_layer)
-            elif function_type == "rbf":
-                function_layer, input_size = self.get_rbf_function(input_size)
-                functions.append(function_layer)
-            elif function_type == "trigonometric":
-                function_layer, input_size = self.get_trigonometric_function(input_size)
-                functions.append(function_layer)
+            if output_function == "sigmoid" and i == l - 2:
+                function_type = "linear"
+                output_size = self.output_size
+            elif output_function is not None and i == l - 1:
+                function_type = output_function
+            else:
+                if previous_function is None:
+                    sample_from = self.function_type
+                else:
+                    sample_from = [
+                        function
+                        for function in function_type_rotation
+                        if function != previous_function
+                    ]
+                function_type = np.random.choice(sample_from)
+                if function_type == "rbf":
+                    function_type_rotation = [
+                        f for f in self.function_type if f != "rbf"
+                    ]
+                previous_function = function_type
 
-        return functions
+            if self.is_debug:
+                print(f"function_type: {function_type}")
+                print(f"input_size: {input_size}")
 
-    def apply_functions(self, Z):
+            function_layer, input_size, function_detail = self.get_function(
+                function_type, input_size, output_size
+            )
+            functions.append(function_layer)
+            function_details.append(function_detail)
+
+            if self.is_debug:
+                print(f"output_size: {output_size}")
+
+        return functions, function_details
+
+    def apply_functions(self, Z, n=None, visualize=False):
         temp = Z
+        if n is None:
+            n = self.n
         for i in range(self.l):
-            temp = np.apply_along_axis(self.functions[i], 1, temp).reshape(self.n, -1)
+            if visualize:
+                print(f"Comp. layer {i} - temp.shape: {temp.shape}")
+                if temp.shape[1] <= 2:
+                    self.plot(temp)
+                    plt.show()
+            temp = np.apply_along_axis(self.functions[i], 1, temp).reshape(n, -1)
+        if visualize:
+            print(f"Comp. layer {i} - temp.shape: {temp.shape}")
+            self.plot(temp)
+            plt.show()
 
         return temp
 
-    def generate_data(self):
-        np.random.seed(self.seed)
+    def generate_data(self, n=None, visualize=False):
+        np.random.seed(self.seed + self.i)
+        self.i += 1
+        if n is None:
+            n = self.n
 
         if self.prior == "uniform_cube":
-            Z = np.random.uniform(-1, 1, self.n * self.d).reshape(self.n, self.d)
+            Z = np.random.uniform(-1, 1, n * self.d).reshape(n, self.d)
             self.Z = Z
         elif self.prior == "uniform_ball":
-            random_directions = np.random.normal(size=(self.n, self.d))
+            random_directions = np.random.normal(size=(n, self.d))
             norms = np.linalg.norm(random_directions, axis=1, keepdims=True)
             unit_vectors = random_directions / norms
-            random_radii = np.random.rand(self.n) ** (1.0 / self.d)
+            random_radii = np.random.rand(n) ** (1.0 / self.d)
             Z = unit_vectors * random_radii[:, np.newaxis]
             self.Z = Z
         elif self.prior == "gaussian":
-            Z = np.random.multivariate_normal(np.zeros(self.d), np.eye(self.d), self.n)
+            Z = np.random.multivariate_normal(np.zeros(self.d), np.eye(self.d), n)
             self.Z = Z
         elif self.prior == "gaussian_mixture":
-            Z, _ = make_blobs(n_samples=self.n, n_features=self.d, centers=2)
+            Z, _ = make_blobs(n_samples=n, n_features=self.d, centers=2)
             self.Z = Z
         else:
             raise ValueError(
                 "Prior must be uniform, gaussian, gaussian_mixture or swiss_roll"
             )
 
-        Y = self.apply_functions(Z)
+        Y = self.apply_functions(self.Z, n=n, visualize=visualize)
         self.Y = Y
 
         return Z, Y
+
+    def get_function_types(self):
+        for i, function_detail in enumerate(self.function_details):
+            print(f"Layer {i}:")
+            for k, v in function_detail.items():
+                print(f"  {k}: {v}")
 
     def plot(self, to_plot=None, plot="input", ax=None, n_bins=20):
         if to_plot is None:
@@ -215,6 +334,8 @@ class FunctionDistrib:
             ax[1].set_title("Output distribution")
         return ax
 
-    def resample(self):
-        self.generate_data()
+    def resample(self, n=None):
+        if n is None:
+            n = self.n
+        self.generate_data(n)
         return self.Z, self.Y
