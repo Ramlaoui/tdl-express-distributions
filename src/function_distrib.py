@@ -11,7 +11,8 @@ class FunctionDistrib:
         d,
         l,
         output_size=None,
-        function_type="linear",
+        function_type=None,
+        random=True,
         output_function=None,
         prior="uniform",
         init=True,
@@ -35,36 +36,34 @@ class FunctionDistrib:
                 "quadratic",
                 "rbf",
                 "trigonometric",
-                # "sigmoid",
+                "sigmoid",
+                "relu",
             ]
         elif "-" in self.function_type:
             self.function_type = self.function_type.split("-")
+            if not (random):
+                self.l = len(self.function_type)
 
         if self.output_function is not None and type(self.function_type) != list:
             print("Output function can only be used with random function type")
 
-        if type(self.function_type) == list:
+        if type(self.function_type) == list and random:
             self.functions, self.function_details = self.generate_random_functions(
                 self.l, output_function=self.output_function
             )
         else:
-            assert self.function_type in [
-                "linear",
-                "quadratic",
-                "sigmoid",
-                "rbf",
-                "trigonometric",
-            ], "Function type must be linear, quadratic, sigmoid, rbf, trigonometric or random"
             self.functions = []
             self.function_details = []
             input_size = d
             for i in range(self.l):
+                if type(self.function_type) == list:
+                    function_type = self.function_type[i]
                 if i == self.l - 1:
                     output_size = self.output_size
                 else:
                     output_size = None
                 function_layer, input_size, function_detail = self.get_function(
-                    self.function_type, input_size, output_size
+                    function_type, input_size, output_size
                 )
                 self.functions.append(function_layer)
                 self.function_details.append(function_detail)
@@ -79,6 +78,8 @@ class FunctionDistrib:
             return self.get_quadratic_function(input_size, output_size)
         elif function_type == "sigmoid":
             return self.get_sigmoid_function(input_size, output_size)
+        elif function_type == "relu":
+            return self.get_relu_function(input_size, output_size)
         elif function_type == "rbf":
             return self.get_rbf_function(input_size, output_size)
         elif function_type == "trigonometric":
@@ -117,6 +118,14 @@ class FunctionDistrib:
             print("Warning: output_size is not used for sigmoid functions")
 
         return lambda x: 1 / (1 + np.exp(-x)), input_size, {"type": "sigmoid"}
+
+    def get_relu_function(self, input_size, output_size=None):
+        np.random.seed(self.seed + self.i)
+
+        if output_size is not None:
+            print("Warning: output_size is not used for relu functions")
+
+        return lambda x: np.maximum(x, 0), input_size, {"type": "relu"}
 
     def get_rbf_function(self, input_size, output_size):
         np.random.seed(self.seed + self.i)
