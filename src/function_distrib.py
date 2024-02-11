@@ -16,6 +16,7 @@ class FunctionDistrib:
         output_function=None,
         prior="uniform",
         init=True,
+        function_seed=42,
         seed=42,
         is_debug=False,
     ):
@@ -27,6 +28,7 @@ class FunctionDistrib:
         self.output_function = output_function
         self.prior = prior
         self.seed = seed
+        self.function_seed = function_seed
         self.i = 0
         self.is_debug = is_debug
 
@@ -86,7 +88,7 @@ class FunctionDistrib:
             return self.get_trigonometric_function(input_size, output_size)
 
     def get_linear_function(self, input_size, output_size=None):
-        np.random.seed(self.seed + self.i)
+        np.random.seed(self.function_seed + self.i)
 
         if output_size is None:
             output_size = np.random.randint(1, 4)
@@ -96,7 +98,7 @@ class FunctionDistrib:
         return lambda x: A.dot(x) + b, output_size, {"type": "linear", "A": A, "b": b}
 
     def get_quadratic_function(self, input_size, output_size=None):
-        np.random.seed(self.seed + self.i)
+        np.random.seed(self.function_seed + self.i)
 
         if output_size is not None:
             print("Warning: output_size is not used for quadratic functions")
@@ -112,7 +114,7 @@ class FunctionDistrib:
         )
 
     def get_sigmoid_function(self, input_size, output_size=None):
-        np.random.seed(self.seed + self.i)
+        np.random.seed(self.function_seed + self.i)
 
         if output_size is not None:
             print("Warning: output_size is not used for sigmoid functions")
@@ -120,7 +122,7 @@ class FunctionDistrib:
         return lambda x: 1 / (1 + np.exp(-x)), input_size, {"type": "sigmoid"}
 
     def get_relu_function(self, input_size, output_size=None):
-        np.random.seed(self.seed + self.i)
+        np.random.seed(self.function_seed + self.i)
 
         if output_size is not None:
             print("Warning: output_size is not used for relu functions")
@@ -128,7 +130,7 @@ class FunctionDistrib:
         return lambda x: np.maximum(x, 0), input_size, {"type": "relu"}
 
     def get_rbf_function(self, input_size, output_size):
-        np.random.seed(self.seed + self.i)
+        np.random.seed(self.function_seed + self.i)
 
         if output_size is not None:
             print("Warning: output_size is not used for rbf functions")
@@ -147,7 +149,7 @@ class FunctionDistrib:
         )
 
     def get_trigonometric_function(self, input_size, output_size):
-        np.random.seed(self.seed + self.i)
+        np.random.seed(self.function_seed + self.i)
 
         if output_size is not None:
             print("Warning: output_size is not used for trigonometric functions")
@@ -164,7 +166,7 @@ class FunctionDistrib:
         )
 
     def generate_random_functions(self, l, output_function=None):
-        np.random.seed(self.seed)
+        np.random.seed(self.function_seed)
         functions = []
         function_details = []
         previous_function = None
@@ -303,7 +305,7 @@ class FunctionDistrib:
                 to_plot = self.Y
         if to_plot.shape[1] != 2:
             raise ValueError("Can only plot 2D data")
-        
+
         # Plot the histograms of the 2D data (3d plot)
         if ax is None:
             fig = plt.figure()
@@ -314,14 +316,16 @@ class FunctionDistrib:
         )
 
         # Compute bin centers
-        xpos, ypos = np.meshgrid((xedges[:-1] + xedges[1:]) / 2,
-                                 (yedges[:-1] + yedges[1:]) / 2, 
-                                 indexing="ij")
+        xpos, ypos = np.meshgrid(
+            (xedges[:-1] + xedges[1:]) / 2,
+            (yedges[:-1] + yedges[1:]) / 2,
+            indexing="ij",
+        )
 
         xpos = xpos.ravel()
         ypos = ypos.ravel()
         zpos = 0
-        
+
         # Compute the width and depth of the bars
         dx = np.diff(xedges) / 2
         dy = np.diff(yedges) / 2
