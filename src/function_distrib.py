@@ -35,7 +35,7 @@ class FunctionDistrib:
                 "quadratic",
                 "rbf",
                 "trigonometric",
-                "sigmoid",
+                # "sigmoid",
             ]
         elif "-" in self.function_type:
             self.function_type = self.function_type.split("-")
@@ -168,7 +168,10 @@ class FunctionDistrib:
             else:
                 output_size = None
 
-            if output_function is not None and i == l - 1:
+            if output_function == "sigmoid" and i == l - 2:
+                function_type = "linear"
+                output_size = self.output_size
+            elif output_function is not None and i == l - 1:
                 function_type = output_function
             else:
                 if previous_function is None:
@@ -201,14 +204,17 @@ class FunctionDistrib:
 
         return functions, function_details
 
-    def apply_functions(self, Z, visualize=False):
+    def apply_functions(self, Z, n=None, visualize=False):
         temp = Z
+        if n is None:
+            n = self.n
         for i in range(self.l):
             if visualize:
                 print(f"Comp. layer {i} - temp.shape: {temp.shape}")
-                self.plot(temp)
-                plt.show()
-            temp = np.apply_along_axis(self.functions[i], 1, temp).reshape(self.n, -1)
+                if temp.shape[1] <= 2:
+                    self.plot(temp)
+                    plt.show()
+            temp = np.apply_along_axis(self.functions[i], 1, temp).reshape(n, -1)
         if visualize:
             print(f"Comp. layer {i} - temp.shape: {temp.shape}")
             self.plot(temp)
@@ -216,32 +222,34 @@ class FunctionDistrib:
 
         return temp
 
-    def generate_data(self, visualize=False):
+    def generate_data(self, n=None, visualize=False):
         np.random.seed(self.seed + self.i)
         self.i += 1
+        if n is None:
+            n = self.n
 
         if self.prior == "uniform_cube":
-            Z = np.random.uniform(-1, 1, self.n * self.d).reshape(self.n, self.d)
+            Z = np.random.uniform(-1, 1, n * self.d).reshape(n, self.d)
             self.Z = Z
         elif self.prior == "uniform_ball":
-            random_directions = np.random.normal(size=(self.n, self.d))
+            random_directions = np.random.normal(size=(n, self.d))
             norms = np.linalg.norm(random_directions, axis=1, keepdims=True)
             unit_vectors = random_directions / norms
-            random_radii = np.random.rand(self.n) ** (1.0 / self.d)
+            random_radii = np.random.rand(n) ** (1.0 / self.d)
             Z = unit_vectors * random_radii[:, np.newaxis]
             self.Z = Z
         elif self.prior == "gaussian":
-            Z = np.random.multivariate_normal(np.zeros(self.d), np.eye(self.d), self.n)
+            Z = np.random.multivariate_normal(np.zeros(self.d), np.eye(self.d), n)
             self.Z = Z
         elif self.prior == "gaussian_mixture":
-            Z, _ = make_blobs(n_samples=self.n, n_features=self.d, centers=2)
+            Z, _ = make_blobs(n_samples=n, n_features=self.d, centers=2)
             self.Z = Z
         else:
             raise ValueError(
                 "Prior must be uniform, gaussian, gaussian_mixture or swiss_roll"
             )
 
-        Y = self.apply_functions(self.Z, visualize=visualize)
+        Y = self.apply_functions(self.Z, n=n, visualize=visualize)
         self.Y = Y
 
         return Z, Y
@@ -326,6 +334,8 @@ class FunctionDistrib:
             ax[1].set_title("Output distribution")
         return ax
 
-    def resample(self):
-        self.generate_data()
+    def resample(self, n=None):
+        if n is None:
+            n = self.n
+        self.generate_data(n)
         return self.Z, self.Y

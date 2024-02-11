@@ -34,7 +34,9 @@ class Trainer:
         self.model = NeuralNetwork(**self.config["model"])
 
     def load_optimizer(self):
-        self.optimizer = optim.Adam(self.model.parameters(), **self.config["optimizer"])
+        self.optimizer = optim.Adam(
+            self.model.parameters(), lr=self.config["optimizer"]["lr"]
+        )
 
     def load_criterion(self):
         self.criterion = nn.MSELoss()
@@ -42,9 +44,12 @@ class Trainer:
     def train(self, plot=False):
         losses = []
         w2_distances = []
+        batch_size = self.config["optimizer"].get(
+            "batch_size", self.config["function_distrib"]["n"]
+        )
 
         for epoch in range(self.config.get("epochs", 300)):
-            Z, Y = self.function_distrib.resample()
+            Z, Y = self.function_distrib.resample(batch_size)
             self.optimizer.zero_grad()
             Y_pred = self.model(torch.from_numpy(Z).float())
             loss = self.criterion(Y_pred, torch.from_numpy(Y).float())
@@ -67,6 +72,7 @@ class Trainer:
             plt.show()
 
         # We evaluate the Neural Network
+        Z, Y = self.function_distrib.resample(self.function_distrib.n)
         Y_pred = self.model(torch.from_numpy(Z).float())
         loss = self.criterion(Y_pred, torch.from_numpy(Y).float())
         w2 = compute_wasserstein_distance(Y, Y_pred)
@@ -77,7 +83,7 @@ class Trainer:
 
         return losses, w2_distances
 
-    def plot_input_output(self, type="both", ax=None):
+    def plot_input_output(self, type="both", ax=None, title=None):
         assert type in ["both", "original_distrib", "neural_network"], (
             "type should be 'both', 'original_distrib' or 'neural_network', "
             "but got {}".format(type)
@@ -112,6 +118,8 @@ class Trainer:
                 ax=ax[2],
             )
             ax[2].set_title("NN Output distribution")
+            if title is not None:
+                fig.suptitle(title)
         elif type == "original_distrib":
             self.function_distrib.plot_input_output(ax=ax, title=True)
             fig.suptitle("Input and output of the original distribution")
