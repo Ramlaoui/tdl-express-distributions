@@ -294,19 +294,35 @@ class FunctionDistrib:
                 to_plot = self.Y
         if to_plot.shape[1] != 2:
             raise ValueError("Can only plot 2D data")
+        
         # Plot the histograms of the 2D data (3d plot)
         if ax is None:
             fig = plt.figure()
             ax = fig.add_subplot(111, projection="3d")
+
         hist, xedges, yedges = np.histogram2d(
             to_plot[:, 0], to_plot[:, 1], bins=n_bins, density=True
         )
-        xpos, ypos = np.meshgrid(xedges[:-1] + 0.25, yedges[:-1] + 0.25, indexing="ij")
+
+        # Compute bin centers
+        # xpos, ypos = np.meshgrid(xedges[:-1] + 0.25, yedges[:-1] + 0.25, indexing="ij")
+        xpos, ypos = np.meshgrid((xedges[:-1] + xedges[1:]) / 2,
+                                 (yedges[:-1] + yedges[1:]) / 2, 
+                                 indexing="ij")
+
         xpos = xpos.ravel()
         ypos = ypos.ravel()
         zpos = 0
-        dx = dy = 0.5 * np.ones_like(zpos)
+        # Compute the width and depth of the bars
+        # dx = dy = 0.5 * np.ones_like(zpos)
+
+        dx = np.diff(xedges) / 2
+        dy = np.diff(yedges) / 2
+        dx = np.repeat(dx, n_bins)
+        dy = np.repeat(dy, n_bins)
+        
         dz = hist.ravel()
+
         ax.bar3d(xpos, ypos, zpos, dx, dy, dz, zsort="average")
         return ax
 
