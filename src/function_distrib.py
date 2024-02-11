@@ -314,7 +314,6 @@ class FunctionDistrib:
         )
 
         # Compute bin centers
-        # xpos, ypos = np.meshgrid(xedges[:-1] + 0.25, yedges[:-1] + 0.25, indexing="ij")
         xpos, ypos = np.meshgrid((xedges[:-1] + xedges[1:]) / 2,
                                  (yedges[:-1] + yedges[1:]) / 2, 
                                  indexing="ij")
@@ -322,14 +321,13 @@ class FunctionDistrib:
         xpos = xpos.ravel()
         ypos = ypos.ravel()
         zpos = 0
+        
         # Compute the width and depth of the bars
-        # dx = dy = 0.5 * np.ones_like(zpos)
-
         dx = np.diff(xedges) / 2
         dy = np.diff(yedges) / 2
         dx = np.repeat(dx, n_bins)
         dy = np.repeat(dy, n_bins)
-        
+
         dz = hist.ravel()
 
         ax.bar3d(xpos, ypos, zpos, dx, dy, dz, zsort="average")
