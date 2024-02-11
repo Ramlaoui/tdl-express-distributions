@@ -13,6 +13,8 @@ class Trainer:
 
         if is_debug:
             self.config["function_distrib"]["is_debug"] = True
+        else:
+            self.config["function_distrib"]["is_debug"] = False
 
         torch.manual_seed(self.config.get("seed", 42))
 
