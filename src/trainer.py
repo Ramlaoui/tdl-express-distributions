@@ -8,8 +8,9 @@ from src.utils import compute_wasserstein_distance
 
 
 class Trainer:
-    def __init__(self, config, function_distrib=None, is_debug=False):
+    def __init__(self, config, function_distrib=None, is_debug=False, device="cpu"):
         self.config = config
+        self.device = device
 
         if is_debug:
             self.config["function_distrib"]["is_debug"] = True
@@ -33,7 +34,7 @@ class Trainer:
         self.config["model"]["output_size"] = self.config["model"].get(
             "output_size", self.function_distrib.Y.shape[1]
         )
-        self.model = NeuralNetwork(**self.config["model"])
+        self.model = NeuralNetwork(**self.config["model"]).to(self.device)
 
     def load_optimizer(self):
         self.optimizer = optim.Adam(
@@ -53,8 +54,8 @@ class Trainer:
         for epoch in range(self.config.get("epochs", 300)):
             Z, Y = self.function_distrib.resample(batch_size)
             self.optimizer.zero_grad()
-            Y_pred = self.model(torch.from_numpy(Z).float())
-            loss = self.criterion(Y_pred, torch.from_numpy(Y).float())
+            Y_pred = self.model(torch.from_numpy(Z).float().to(self.device))
+            loss = self.criterion(Y_pred, torch.from_numpy(Y).float().to(self.device))
             losses.append(loss.item())
             w2_distances.append(compute_wasserstein_distance(Y, Y_pred))
             loss.backward()
@@ -75,8 +76,8 @@ class Trainer:
 
         # We evaluate the Neural Network
         Z, Y = self.function_distrib.resample(self.function_distrib.n)
-        Y_pred = self.model(torch.from_numpy(Z).float())
-        loss = self.criterion(Y_pred, torch.from_numpy(Y).float())
+        Y_pred = self.model(torch.from_numpy(Z).float().to(self.device))
+        loss = self.criterion(Y_pred, torch.from_numpy(Y).float().to(self.device))
         w2 = compute_wasserstein_distance(Y, Y_pred)
 
         if plot:
@@ -115,6 +116,7 @@ class Trainer:
             self.function_distrib.plot(
                 plot="output",
                 to_plot=self.model(torch.FloatTensor(self.function_distrib.Z))
+                .cpu()
                 .detach()
                 .numpy(),
                 ax=ax[2],
@@ -129,6 +131,7 @@ class Trainer:
             self.function_distrib.plot_input_output(
                 X_input=self.function_distrib.Z,
                 X_output=self.model(torch.FloatTensor(self.function_distrib.Z))
+                .cpu()
                 .detach()
                 .numpy(),
                 ax=ax,

@@ -8,7 +8,7 @@ def compute_wasserstein_distance(y, y_pred, bins=100):
     p = hist * np.diff(bins_edges)
 
     hist_pred, bins_edges_pred = np.histogram(
-        y_pred.detach().numpy(), bins=bins, density=True
+        y_pred.cpu().detach().numpy(), bins=bins, density=True
     )
     q = hist_pred * np.diff(bins_edges_pred)
 
