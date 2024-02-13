@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This repository contains the code for the experiments and improvements based on the paper: On the ability of neural nets to express distributions (https://arxiv.org/abs/2006.10041).
+This repository contains the code for the experiments and improvements based on the paper: On the ability of neural nets to express distributions ([here](https://arxiv.org/abs/1702.07028)).
 
 ## Installation
 
